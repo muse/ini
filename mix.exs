@@ -5,7 +5,7 @@ defmodule INI.MixProject do
     [
       app: :ini,
       version: "0.0.1",
-      elixir: "~> 1.6",
+      elixir: "~> 1.5",
       test_coverage: [tool: ExCoveralls],
       start_permanent: Mix.env() == :prod,
       deps: deps()
