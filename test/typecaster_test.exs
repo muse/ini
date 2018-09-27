@@ -8,7 +8,7 @@ defmodule INITypecasterTest do
   describe "Will typecast integers, floats, boolean and binaries." do
     test "Will typecast an integer." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
             %Pair{k: "A", v: "1"}
           ]
@@ -24,9 +24,9 @@ defmodule INITypecasterTest do
 
     test "Will typecast an integer with trailing characters." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
-            %Pair{k: "A", v: "1 TRAILING"}
+            %Pair{k: "A", v: "1 <Trailing characters>"}
           ]
         }
 
@@ -40,7 +40,7 @@ defmodule INITypecasterTest do
 
     test "Will typecast a float." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
             %Pair{k: "A", v: "1.0"}
           ]
@@ -56,9 +56,9 @@ defmodule INITypecasterTest do
 
     test "Will typecast a float with trailing characters." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
-            %Pair{k: "A", v: "1.0 TRAILING"}
+            %Pair{k: "A", v: "1.0 <Trailing characters>"}
           ]
         }
 
@@ -72,7 +72,7 @@ defmodule INITypecasterTest do
 
     test "Will typecast a boolean." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
             %Pair{k: "A", v: "true"}
           ]
@@ -88,7 +88,7 @@ defmodule INITypecasterTest do
 
     test "Will typecast a binary." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
             %Pair{k: "A", v: "Here be dragons."}
           ]
@@ -104,9 +104,9 @@ defmodule INITypecasterTest do
 
     test "Will typecast a quoted binary." do
       ast =
-        %{%Environment{}
+        %{%Env{}
           | state: [
-            %Pair{k: "A", v: "\"   We want to maintain the \\\nmarkup, but lose the quotes.\""}
+            %Pair{k: "A", v: "\"   We want to maintain the \\nmarkup, but lose the quotes.\""}
           ]
         }
 
@@ -114,8 +114,36 @@ defmodule INITypecasterTest do
         @module.act ast
 
       assert match? [
-        %Pair{k: "A", v: "   We want to maintain the \\\nmarkup, but lose the quotes."}
+        %Pair{k: "A", v: "   We want to maintain the \\nmarkup, but lose the quotes."}
       ], state
+    end
+
+    test "Will typecast a value within a section" do
+      ast =
+        %{%Env{}
+          | sections: [
+            %Section{
+              children: [
+                %Pair{k: "A", v: "1"},
+                %Pair{k: "B", v: "1.0"},
+                %Pair{k: "C", v: "0.5"}
+              ]
+            }
+          ]
+        }
+
+      %{sections: sections} =
+        @module.act ast
+
+      assert match? [
+        %Section{
+          children: [
+            %Pair{k: "A", v: 1},
+            %Pair{k: "B", v: 1.0},
+            %Pair{k: "C", v: 0.5}
+          ]
+        }
+      ], sections
     end
   end
 end

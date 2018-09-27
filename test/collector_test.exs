@@ -5,18 +5,36 @@ defmodule INICollectorTest do
   use INI.AST
   use ExUnit.Case
 
-  describe "Will collect in a section namespace." do
+  describe "Will collect a section." do
     test "Collects an empty section." do
       ini =
         """
         [A]
         """
 
-      %Environment{sections: sections} =
+      %Env{sections: sections} =
         @module.act ini
 
       assert match? [
         %Section{name: "A", children: []}
+      ], sections
+    end
+
+    test "Collects multiple empty sections." do
+      ini =
+        """
+        [A]
+        [B]
+        [C]
+        """
+
+      %Env{sections: sections} =
+        @module.act ini
+
+      assert match? [
+        %Section{name: "A", children: []},
+        %Section{name: "B", children: []},
+        %Section{name: "C", children: []}
       ], sections
     end
 
@@ -27,7 +45,23 @@ defmodule INICollectorTest do
         B=1
         """
 
-      %Environment{sections: sections} =
+      %Env{sections: sections} =
+        @module.act ini
+
+      assert match? [
+        %Section{name: "A", children: [
+          %Pair{k: "B", v: "1"}
+        ]}
+      ], sections
+    end
+
+    test "Collects a section with a pair on one line." do
+      ini =
+        """
+        [A]B=1
+        """
+
+      %Env{sections: sections} =
         @module.act ini
 
       assert match? [
@@ -45,7 +79,7 @@ defmodule INICollectorTest do
         C=2
         """
 
-      %Environment{sections: sections} =
+      %Env{sections: sections} =
         @module.act ini
 
       assert match? [
@@ -67,7 +101,7 @@ defmodule INICollectorTest do
         F=4
         """
 
-      %Environment{sections: sections} =
+      %Env{sections: sections} =
         @module.act ini
 
       assert match? [
@@ -81,16 +115,55 @@ defmodule INICollectorTest do
         ]}
       ], sections
     end
+
+    test "Collects a section whilst skipping comments." do
+      ini =
+        """
+        ; This is section A
+        ; This section is useful because it has the value `A`.
+        [A]
+        ; I like A.
+        """
+
+      %Env{sections: sections} =
+        @module.act ini
+
+      assert match? [
+        %Section{name: "A", children: []}
+      ], sections
+    end
+
+    test "Collects a section with a pair whist skipping comments." do
+      ini =
+        """
+        ; We've section A here once more.
+        [A]
+        ; Section A harbours the pair B = 1.
+        B = 1
+        ; We now know that B is 1.
+        """
+
+      %Env{sections: sections} =
+        @module.act ini
+
+      assert match? [
+        %Section{name: "A", children: [
+          %Pair{k: "B", v: "1"}
+        ]}
+      ], sections
+
+
+    end
   end
 
-  describe "Will collect in the environmental namespace." do
+  describe "Will collect a pair [value]." do
     test "Collects a pair." do
       ini =
         """
         A=1
         """
 
-      %Environment{state: state} =
+      %Env{state: state} =
         @module.act ini
 
       assert match? [
@@ -106,7 +179,7 @@ defmodule INICollectorTest do
         C=3
         """
 
-      %Environment{state: state} =
+      %Env{state: state} =
         @module.act ini
 
       assert match? [
@@ -116,72 +189,136 @@ defmodule INICollectorTest do
       ], state
     end
 
-    test "Collects a pair with a \\n." do
+    test "Collects a pair with no value." do
       ini =
         """
-        A=\
-        1
+        A
         """
 
-      %Environment{state: state} =
+      %Env{state: state} =
         @module.act ini
 
       assert match? [
-        %Pair{k: "A", v: "1"}
+        %Pair{k: "A", v: ""}
       ], state
     end
 
-    test "Collects a pair with subsequent \\n." do
+    test "Collects more than one pair with no value." do
       ini =
         """
-        A=1\
-        \
-        2\
-        \
-        3
+        A
+        B
+        C
         """
 
-      %Environment{state: state} =
+      %Env{state: state} =
         @module.act ini
 
       assert match? [
-        %Pair{k: "A", v: "123"}
+        %Pair{k: "A", v: ""},
+        %Pair{k: "B", v: ""},
+        %Pair{k: "C", v: ""}
+      ], state
+    end
+
+    test "Collects a pair with subsequent newlines." do
+      ini =
+        """
+        A=\
+        \
+        1
+
+        A\
+        B\
+        C=6
+        """
+
+      %Env{state: state} =
+        @module.act ini
+
+      assert match? [
+        %Pair{k: "A", v: "1"},
+        %Pair{k: "ABC", v: "6"}
+      ], state
+
+
+    end
+
+    test "Collects a pair with subsequent newlines whilst discarding redundant whitespace." do
+      ini =
+        """
+        A \
+          \
+          = \
+          \
+          \
+        1
+        """
+
+      %Env{state: state} =
+        @module.act ini
+
+      assert match? [
+        %Pair{k: "A", v: "1"},
       ], state
     end
 
     test "Collects more than one pair whilst discarding redundant whitespace." do
       ini =
         """
-        A = 1
-        B   =   2
-        C       =       3
+        A \
+          \
+        = \
+          \
+        1
+
+        B = \
+            \
+            2
         """
 
-      %Environment{state: state} =
+      %Env{state: state} =
         @module.act ini
 
-      match? [
+      assert match? [
         %Pair{k: "A", v: "1"},
         %Pair{k: "B", v: "2"},
-        %Pair{k: "C", v: "3"}
       ], state
     end
 
-    test "Collects a pair with subsequent \\n whilst discarding redundant whitespace." do
+    test "Collects a pair with a quoted binary." do
       ini =
         """
-        A=\
-        1\
-         2\
-          3\
-        0  4
+        A = \
+          " -- We are alive, sentient beings are amongst us. -- "
         """
 
-      %Environment{state: state} =
+      %Env{state: state} =
         @module.act ini
 
-      match? [
-        %Pair{k: "A", v: "12304"}
+      assert match? [
+        %Pair{k: "A", v: "\" -- We are alive, sentient beings are amongst us. -- \""}
+      ], state
+    end
+
+    test "Collects a pair with unambigious UTF8 characters." do
+      ini =
+        """
+        A = 1
+
+        Ѭ = 1
+        2 = Ԫ
+        ࢉ = 3
+        """
+
+      %Env{state: state} =
+        @module.act ini
+
+      assert match? [
+        %Pair{k: "A", v: "1"},
+        %Pair{k: <<209>>, v: "1"},
+        %Pair{k: "2", v: <<212>>},
+        %Pair{k: <<224>>, v: "3"}
       ], state
     end
   end
