@@ -3,9 +3,9 @@ defmodule INI.Typecaster do
   """
   use INI.AST
 
-  @spec act(Environment.t()) :: Environment.t()
-  def act(%Environment{sections: sections, state: state} = environment) do
-    %{environment | sections: typecaster(sections), state: typecaster(state)}
+  @spec act(Env.t()) :: Env.t()
+  def act(%Env{sections: sections, state: state} = env) do
+    %{env | sections: typecaster(sections), state: typecaster(state)}
   end
 
   @spec typecasters :: [(Pair.t() -> {:ok, any} | :error)]
@@ -19,7 +19,7 @@ defmodule INI.Typecaster do
       %{section | children: typecaster(children)}
     end)
  end
-  defp typecaster([%Pair{} | _] = state) do
+ defp typecaster([%Pair{} | _] = state) do
     Enum.map(state, fn pair ->
       {:ok, v} =
         Enum.reduce(typecasters(), :error, fn

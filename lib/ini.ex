@@ -1,20 +1,34 @@
 defmodule INI do
   @moduledoc """
-  INI.Collector   # Tokenize and format to AST.
-  INI.Typecaster  # Typecast int, float, bool & str.
-  INI             # Parse and format INI.
   """
   alias INI.{
     Collector,
-    Typecaster
+    Typecaster,
+    Formatter,
+    AST
   }
 
+  @doc """
+  """
+  @spec format(AST.t()) :: String.t()
+  defdelegate format(ast), to: Formatter, as: :act
+
+  @doc """
+  """
+  @spec typecast(AST.t()) :: AST.t()
+  defdelegate typecast(ast), to: Typecaster, as: :act
+
+  @doc """
+  """
+  @spec collect(String.t()) :: AST.t()
+  defdelegate collect(ini), to: Collector, as: :act
+
+  @doc """
+  """
+  @spec parse(String.t()) :: AST.t()
   def parse(ini) do
     ini
-    |> Collector.act
-    |> Typecaster.act
-  end
-
-  def format(ini) do
+    |> Collector.act()
+    |> Typecaster.act()
   end
 end

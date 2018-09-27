@@ -89,13 +89,21 @@ defmodule INI.Collector do
   @type token :: <<_::16>>
 
   @doc """
-  Return the environmental and the section based AST stacks from the `stream`.
+  Return the env and the section based AST stacks from the `stream`.
   """
-  @spec act(String.t()) :: Environment.t()
+  @spec act(String.t()) :: Env.t()
   def act(stream) do
     stream
     |> prepare()
     |> collector()
+  end
+
+  @doc """
+  Return the `section` with their `children` reversed.
+  """
+  @spec reverse(Section.t()) :: Section.t()
+  def reverse(%Section{children: children} = section) do
+    %{section | children: Enum.reverse(children)}
   end
 
   @spec prepare(String.t()) :: [token]
@@ -111,12 +119,7 @@ defmodule INI.Collector do
     %{pair | k: String.trim(k), v: String.trim(v)}
   end
 
-  @spec reverse(Section.t()) :: Section.t()
-  defp reverse(%Section{children: children} = section) do
-    %{section | children: Enum.reverse(children)}
-  end
-
-  @spec collector([token]) :: Environment.t()
+  @spec collector([token]) :: Env.t()
   defp collector(stream) do
     accumulator = %{
         stack: [],
@@ -129,7 +132,7 @@ defmodule INI.Collector do
     %{section: section, stack: stack, state: state} =
       Enum.reduce(stream, accumulator, &collect/2)
 
-    %Environment{
+    %Env{
       sections: Enum.reverse(section && [reverse(section) | stack] || stack),
          state: Enum.reverse(state)
     }
@@ -140,9 +143,10 @@ defmodule INI.Collector do
     %{accumulator | mode: previous}
   end
 
-  defp collect(<<?\\, ?\n>>, %{mode: mode, pair: %Pair{}} = accumulator) do
-    %{accumulator | mode: {:skip, mode}}
-  end
+  # TODO: Find out about the necessity of this clause.
+  # defp collect(<<?\\, ?\n>>, %{mode: mode, pair: %Pair{}} = accumulator) do
+  #   %{accumulator | mode: {:skip, mode}}
+  # end
 
   defp collect(<<_, _::binary>>, %{mode: {:skip, _}} = accumulator) do
     accumulator
@@ -192,7 +196,8 @@ defmodule INI.Collector do
     %{accumulator | pair: %{%Pair{} | k: <<token>>}}
   end
 
-  defp collect(<<"", _::binary>>, accumulator) do
-    accumulator
-  end
+  # TODO: Find out about the necessity of this clause.
+  # defp collect(<<"", _::binary>>, accumulator) do
+  #   accumulator
+  # end
 end

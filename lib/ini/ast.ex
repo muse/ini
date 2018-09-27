@@ -2,11 +2,11 @@ defmodule INI.AST do
   @moduledoc """
   INI AST as structures.
   """
-  @type t :: Environment.t() | Section.t() | Pair.t()
+  @type t :: Env.t() | Section.t() | Pair.t()
 
   defmacro __using__(_) do
     quote do
-      alias INI.{AST, AST.Environment, AST.Section, AST.Pair}
+      alias INI.{AST, AST.Env, AST.Section, AST.Pair}
     end
   end
 
@@ -20,21 +20,21 @@ defmodule INI.AST do
       |> Module.split()
       |> Enum.reverse()
 
-    :"#{String.downcase(module)}"
+    Macro.underscore(module)
   end
 
-  defmodule Environment do
+  defmodule Env do
     @moduledoc """
-    The INI environment.
+    The INI env.
     """
     @type t :: %__MODULE__{
-         state: [Pair.t()],
-      sections: [Section.t()]
+      sections: [Section.t()],
+         state: [Pair.t()]
     }
 
     defstruct [
-         state: [],
-      sections: []
+      sections: [],
+         state: []
     ]
   end
 
